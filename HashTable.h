@@ -85,10 +85,30 @@ public:
 
 template <class Key, class T>
 HashTable<Key, T>::HashTable(){
+	//backingArray = new HashRecord[hashPrimes[0]];
+	//backingArraySize = hashPrimes[0];
+	//numRemoved = 0;
+	//numItems = 0;
+
+	// The HashTable class has 4 variables in it:
+	// backingArray: A backing array to store the HashRecords in,
+	// backingArraySize: a long to keep track of the size of that array,
+	// numItems: a long to keep track of the amount of things in the HashTable,
+	// and numRemoved: a long to keep track of the number of spaces in the array that have been used, but not reused? These spaces can be overwritten
+
+
+	// Need to create an array of Lists
+	// except they aren't lists, they're HashRecords..
+	// Which is a subclass of HashTable with all the vitals in order.
+	// These vitals being: a key, an object, isDel = false and isNull = true.
+	// And we want the length to be prime so we can hash properly
+	// So we'll use the hashPrimes array, the first entry in which is 53.
 	backingArray = new HashRecord[hashPrimes[0]];
 	backingArraySize = hashPrimes[0];
-	numRemoved = 0;
 	numItems = 0;
+	numRemoved = 0;
+
+
 }
 
 template <class Key, class T>
@@ -96,63 +116,145 @@ HashTable<Key, T>::~HashTable() {
 	delete[] backingArray;
 }
 
+
+// Given a key K,
+// Return where it ought to be, or where it already is 
 template <class Key, class T>
-unsigned long HashTable<Key,T>::calcIndex(Key k){
-	unsigned long i = hash(k);
-	for (i; true; i++) {
-		if (backingArray[i % backingArraySize].isNull || backingArray[i % backingArraySize].k == k){
-			return (i % backingArraySize);
+unsigned long HashTable<Key, T>::calcIndex(Key k){
+	//unsigned long i = hash(k);
+	//for (i; true; i++) {
+	//	if (backingArray[i % backingArraySize].isNull || backingArray[i % backingArraySize].k == k){
+	//		return (i % backingArraySize);
+	//	}
+	//}
+	//return numItems; // to indicate failure
+
+	unsigned long i = hash(k) % backingArraySize;
+	// increment and search for a match or suitable index
+	unsigned long x = -1;
+	for (i; true; i = (i + 1) % backingArraySize) {
+		//if (backingArray[i].k == k || backingArray[i].isNull || backingArray[i].isDel)
+		//	return i;
+		if (backingArray[i].isDel)
+			x = i;
+		if (backingArray[i].isNull) {
+			if (x == -1) return i;
+			else return x;
 		}
+		if (backingArray[i].k == k && !backingArray[i].isDel && !backingArray[i].isNull) 
+			return i;
 	}
-	return numItems; // to indicate failure
+	return x;
+
 }
 
 template <class Key, class T>
 void HashTable<Key, T>::add(Key k, T x){
-	if ((numItems + numRemoved) >= backingArraySize / 2){
+	// Original Code
+	//if ((numItems + numRemoved) >= backingArraySize / 2){
+	//	grow();
+	//}
+	//unsigned long i = hash(k);
+	//for (i; true; i++) {
+	//	if (backingArray[i % backingArraySize].isNull || backingArray[i % backingArraySize].k == k || backingArray[i % backingArraySize].isDel){
+	//		i = (i % backingArraySize);
+	//		break;
+	//	}
+	//}
+	//backingArray[i].k = k;
+	//backingArray[i].x = x;
+	//backingArray[i].isNull = false;
+	//backingArray[i].isDel = false;
+	//numItems++;
+
+	// First things first, grow if you need to.
+	// AKA, grow if the array is more than half full!
+	if (2 * (numItems + numRemoved + 1) > backingArraySize) {
 		grow();
 	}
-	unsigned long i = hash(k);
-	for (i; true; i++) {
-		if (backingArray[i % backingArraySize].isNull || backingArray[i % backingArraySize].k == k || backingArray[i % backingArraySize].isDel){
-			i = (i % backingArraySize);
-			break;
-		}
+	// Now I hash the key to get the index in the "circular" array.
+	// You write in any location that is marked null or del
+	// or if you find a cell with the same key??
+	// so find the closest example of that.
+	unsigned long i = hash(k) % backingArraySize;
+	//for (i; true; i = (i + 1) % backingArraySize){
+	//	if (backingArray[i].k == k) {
+	//		break;
+	//	}
 
+	//}
+
+	i = calcIndex(k);
+	if (backingArray[i].isNull) {
+		numItems++;
 	}
-	backingArray[i].k = k;
-	backingArray[i].x = x;
-	backingArray[i].isNull = false;
+	if (backingArray[i].isDel) {
+		numRemoved--;
+		numItems++;
+	}
+	
+
+
+	// Once a suitable cell is found, add it by assigning it's variables to the variables of the object added.
+	backingArray[i].k = k; // Assign the key.
+	backingArray[i].x = x; // Assign the object.
 	backingArray[i].isDel = false;
-	numItems++;
+	backingArray[i].isNull = false; // Don't let it be touched for now!
 }
 template <class Key, class T>
 void HashTable<Key, T>::remove(Key k){
-	// Set the element at spot k to del
-	if (keyExists(k)) {
-		backingArray[calcIndex(k)].isDel = true;
-		numRemoved++;
-		numItems--;
-	}
+	//// Set the element at spot k to del
+	//if (keyExists(k)) {
+	//	backingArray[calcIndex(k)].isDel = true;
+	//	numRemoved++;
+	//	numItems--;
+	//}
+	
+	if (keyExists(k) == false) throw std::string("Can't remove something that doesn't exist!");
+
+	backingArray[calcIndex(k)].isDel = true;
+	numItems--;
+	numRemoved++;
+
+
 }
 
 template <class Key, class T>
 T HashTable<Key, T>::find(Key k){
-	//T dummy;
-	if (keyExists(k)){
-		return (backingArray[calcIndex(k)].x);
-	}
-	else throw std::string("Can't find() a key like that in the table!");
-	//return dummy;
+	////T dummy;
+	//if (keyExists(k)){
+	//	return (backingArray[calcIndex(k)].x);
+	//}
+	//else throw std::string("Can't find() a key like that in the table!");
+	////return dummy;
+
+	if (keyExists(k) == false)
+		throw std::string("Can't find something that doesn't exist!");
+	else return backingArray[calcIndex(k)].x;
+
+
 
 }
 
 
 template <class Key, class T>
 bool HashTable<Key, T>::keyExists(Key k){
+	//for (int j = 0; j < backingArraySize; j++){
+	//	if (backingArray[j].k == k && !backingArray[j].isDel)
+	//		return true;
+	//}
+	//return false;
+
 	unsigned long i = calcIndex(k);
-	if ((backingArray[i].k == k) && (!backingArray[i].isDel)) return true;
+	if (backingArray[i].isNull) 
+		return false;
+	if (backingArray[i].isDel) 
+		return false;
+	if (backingArray[i].k == k)
+		return true;
+
 	return false;
+
 }
 
 template <class Key, class T>
@@ -179,4 +281,6 @@ void HashTable<Key, T>::grow(){
 		}
 	}
 	delete[] formerArray;
+
+
 }
